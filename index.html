@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Interactive Yogyakarta Web GIS</title>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    
+    <style>
+        body, html { margin: 0; padding: 0; height: 100%; width: 100%; }
+        #map { height: 100%; width: 100%; }
+        .info-title {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            z-index: 1000;
+            background: white;
+            padding: 10px 15px;
+            border-radius: 5px;
+            font-family: sans-serif;
+            box-shadow: 0 0 15px rgba(0,0,0,0.2);
+        }
+        .popup-btn {
+            display: inline-block;
+            margin-top: 5px;
+            margin-right: 5px;
+            padding: 5px 10px;
+            background: #0078A8;
+            color: white;
+            text-decoration: none;
+            border-radius: 4px;
+            font-size: 12px;
+            border: none;
+            cursor: pointer;
+        }
+        .popup-btn.visited-btn {
+            background: #28a745;
+        }
+
+        /* Custom Large Marker Styling */
+        .custom-pin {
+            background-color: #ff5722;
+            border: 3px solid #ffffff;
+            border-radius: 50% 50% 50% 0;
+            width: 28px;
+            height: 28px;
+            transform: rotate(-45deg);
+            display: block;
+            left: -14px;
+            top: -14px;
+            position: relative;
+            box-shadow: 0 3px 6px rgba(0,0,0,0.3);
+        }
+        /* Style changes when marked as visited */
+        .custom-pin.visited {
+            background-color: #28a745 !important;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="info-title"><b>Yogyakarta Interactive GIS</b></div>
+    <div id="map"></div>
+
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    
+    <!-- Dependencies for Leaflet-KMZ -->
+    <script src="https://unpkg.com/jszip@3.10.1/dist/jszip.min.js"></script>
+    <script src="https://unpkg.com/@tmcw/togeojson@5.8.1/dist/togeojson.umd.js"></script>
+    <script src="https://unpkg.com/leaflet-kmz@latest/dist/leaflet-kmz.js"></script>
+
+    <script>
+        var map = L.map('map').setView([-7.7956, 110.3695], 11);
+
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19,
+            attribution: '&copy; OpenStreetMap contributors'
+        }).addTo(map);
+
+        var kmzLayer = L.kmzLayer().addTo(map);
+
+        kmzLayer.load('acara3.kmz');
+
+        kmzLayer.on('load', function(e) {
+            map.fitBounds(e.layer.getBounds());
+
+            e.layer.eachLayer(function(layer) {
+                if (layer instanceof L.Marker) {
+                    var latLng = layer.getLatLng();
+                    var title = layer.feature && layer.feature.properties && layer.feature.properties.name 
+                                ? layer.feature.properties.name 
+                                : "Yogyakarta Point";
+
+                    // Apply a big custom HTML marker icon
+                    var largePinIcon = L.divIcon({
+                        className: 'custom-pin-container',
+                        html: '<div class="custom-pin"></div>',
+                        iconSize: [28, 28],
+                        iconAnchor: [14, 28],
+                        popupAnchor: [0, -28]
+                    });
+                    layer.setIcon(largePinIcon);
+
+                    var routeUrl = `https://www.google.com/maps/dir/?api=1&destination=${latLng.lat},${latLng.lng}`;
+
+                    var popupContent = `
+                        <b>${title}</b><br>
+                        Lat: ${latLng.lat.toFixed(4)}, Lng: ${latLng.lng.toFixed(4)}<br><br>
+                        <a href="${routeUrl}" target="_blank" class="popup-btn">Route Here</a>
+                        <button class="popup-btn toggle-visited" onclick="toggleVisited(this, ${layer._leaflet_id})">Mark Visited</button>
+                    `;
+
+                    layer.bindPopup(popupContent);
+                }
+            });
+        });
+
+        // Track visited elements and change marker color dynamically
+        window.toggleVisited = function(btn, markerId) {
+            var marker = map._layers[markerId];
+            var pinElement = marker.getElement().querySelector('.custom-pin');
+
+            if (btn.classList.contains('visited-btn')) {
+                btn.classList.remove('visited-btn');
+                btn.innerText = "Mark Visited";
+                if (pinElement) pinElement.classList.remove('visited');
+            } else {
+                btn.classList.add('visited-btn');
+                btn.innerText = "Visited ✓";
+                if (pinElement) pinElement.classList.add('visited');
+            }
+        };
+    </script>
+</body>
+</html>
